@@ -8,45 +8,189 @@
   <style>
     * { box-sizing: border-box; }
     html, body { height: 100%; }
-    body { margin: 0; font-family: system-ui, sans-serif; background: #14181c; color: #fff;
-           display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
-    #topo { flex: none; padding: 6px 12px; display: flex; justify-content: space-between; font-size: 13px; background: #0e1114; }
-    #camera { flex: none; position: relative; width: 100%; height: 34dvh; background: #000; }
-    video { width: 100%; height: 100%; display: block; object-fit: cover; }
-    #moldura { position: absolute; left: 3%; right: 3%; top: 5%; bottom: 5%;
-               border: 3px solid #fff; border-radius: 10px;
-               transition: border-color .2s, background .2s; }
-    #moldura.lido { border-color: #00cc66; background: rgba(0, 200, 100, .25); }
-    #moldura.parcial { border-color: #ffcc00; }
-    #estado { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center;
-              font-weight: bold; font-size: 13px; text-shadow: 0 0 6px #000, 0 0 3px #000; }
-    #ativar { flex: none; margin: 10px auto; padding: 14px 28px; font-size: 16px;
-              border: 0; border-radius: 8px; background: #00cc66; color: #04210f; font-weight: bold; }
-    #erro { flex: none; padding: 0 12px; color: #ff8888; font-size: 13px; }
-
-    /* painel principal: ocupa o resto da tela e rola por dentro */
-    #painel { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 10px 12px; -webkit-overflow-scrolling: touch; }
-    #acoes { display: flex; gap: 8px; margin-bottom: 8px; }
-    #acoes button { flex: 1; padding: 12px 6px; font-size: 14px; font-weight: bold; border: 0; border-radius: 8px; color: #fff; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #14181c;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      overflow: hidden;
+    }
+    #topo {
+      flex: none;
+      padding: 6px 12px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      background: #0e1114;
+    }
+    #camera {
+      flex: none;
+      position: relative;
+      width: 100%;
+      height: 34dvh;
+      background: #000;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+    #moldura {
+      position: absolute;
+      left: 3%; right: 3%; top: 5%; bottom: 5%;
+      border: 3px solid #fff;
+      border-radius: 10px;
+      transition: border-color .2s, background .2s;
+    }
+    #moldura.lido {
+      border-color: #00cc66;
+      background: rgba(0, 200, 100, .25);
+    }
+    #moldura.parcial {
+      border-color: #ffcc00;
+    }
+    #estado {
+      position: absolute;
+      left: 0; right: 0; bottom: 4px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 13px;
+      text-shadow: 0 0 6px #000, 0 0 3px #000;
+    }
+    #ativar {
+      flex: none;
+      margin: 10px auto;
+      padding: 14px 28px;
+      font-size: 16px;
+      border: 0;
+      border-radius: 8px;
+      background: #00cc66;
+      color: #04210f;
+      font-weight: bold;
+    }
+    #erro {
+      flex: none;
+      padding: 0 12px;
+      color: #ff8888;
+      font-size: 13px;
+    }
+    #painel {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 8px 10px 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+    #acoes {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    #acoes button {
+      flex: 1;
+      padding: 12px 6px;
+      font-size: 14px;
+      font-weight: bold;
+      border: 0;
+      border-radius: 8px;
+      color: #fff;
+    }
     #btn-enviar { background: #0b8f4d; }
     #btn-limpar { background: #4a5560; }
-    #btn-enviar:disabled { background: #2a3138; color: #667; }
-
-    #campos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
-    .campo { background: #1d242b; border-radius: 8px; padding: 6px 8px; border-left: 4px solid #3a444d; min-height: 46px; }
-    .campo .n { font-size: 10px; text-transform: uppercase; color: #8a97a3; letter-spacing: .04em; }
-    .campo .v { font-size: 15px; font-weight: 600; word-break: break-all; color: #556; }
+    #btn-enviar:disabled {
+      background: #2a3138;
+      color: #667;
+    }
+    #campos {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .campo {
+      background: #1d242b;
+      border-radius: 8px;
+      padding: 6px 8px;
+      border-left: 4px solid #3a444d;
+      min-height: 52px;
+    }
+    .campo .n {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #8a97a3;
+      letter-spacing: .04em;
+      margin-bottom: 2px;
+    }
+    .campo input {
+      width: 100%;
+      background: transparent;
+      border: 0;
+      color: #eafff3;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 0;
+      outline: none;
+    }
+    .campo input::placeholder { color: #556; }
     .campo.ok { border-left-color: #00cc66; }
-    .campo.ok .v { color: #eafff3; }
     .campo.palpite { border-left-color: #ffcc00; }
-    .campo.palpite .v { color: #ffe680; }
-
-    details { background: #1d242b; border-radius: 8px; margin-bottom: 8px; font-size: 12px; }
-    summary { padding: 9px 10px; font-weight: bold; }
-    details > div, details > pre { padding: 0 10px 10px; }
-    details button { margin: 2px 4px 2px 0; padding: 7px 10px; border: 0; border-radius: 6px; background: #2f7dd1; color: #fff; font-size: 12px; }
-    #d-texto { white-space: pre-wrap; word-break: break-word; margin: 0; max-height: 22vh; overflow: auto; color: #9fd; }
-    #lista div { padding: 6px 2px; border-bottom: 1px solid #333; font-size: 13px; }
+    .campo.palpite input { color: #ffe680; }
+    .campo.principal {
+      grid-column: 1 / -1;
+      border-left-width: 6px;
+      background: #1a2a22;
+    }
+    .campo.principal .n { color: #7dcea0; }
+    details {
+      background: #1d242b;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    summary {
+      padding: 9px 10px;
+      font-weight: bold;
+    }
+    details > div, details > pre {
+      padding: 0 10px 10px;
+    }
+    details button {
+      margin: 2px 4px 2px 0;
+      padding: 7px 10px;
+      border: 0;
+      border-radius: 6px;
+      background: #2f7dd1;
+      color: #fff;
+      font-size: 12px;
+    }
+    #d-texto {
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 0;
+      max-height: 22vh;
+      overflow: auto;
+      color: #9fd;
+    }
+    #lista div {
+      padding: 6px 2px;
+      border-bottom: 1px solid #333;
+      font-size: 13px;
+    }
+    .aviso-validacao {
+      background: #1a2a22;
+      border: 1px solid #0b8f4d;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #a8e6c3;
+      display: none;
+    }
+    .aviso-validacao.visivel { display: block; }
   </style>
 </head>
 <body>
@@ -65,6 +209,10 @@
   <div id="erro"></div>
 
   <div id="painel">
+    <div class="aviso-validacao" id="aviso">
+      Confira os dados abaixo (principalmente o <strong>Nº do Pedido</strong>) e clique em <strong>Enviar agora</strong>.
+    </div>
+
     <div id="acoes">
       <button id="btn-enviar" disabled>Enviar agora</button>
       <button id="btn-limpar">Limpar leitura</button>
@@ -95,29 +243,69 @@
   <script>
     // ====== AJUSTE AQUI ======
     const URL_API = 'https://script.google.com/macros/s/AKfycbwEdmDwZ_EQxJW-HeMRcJmaBi2P3WEE4_atkQb6gNuVgtc7cj25oP6UBeNoLkttrG8y/exec';
-    const TOKEN = 'vamosfazerotestedacameraocr'; // igual ao do Código.gs
+    const TOKEN = 'vamosfazerotestedacameraocr';
+    const INTERVALO_MS = 600;
+    const MIN_VOTOS = 2;
+    const QUADROS_VAZIOS_PARA_LIBERAR = 3;
 
-    const INTERVALO_MS = 600;          // tempo entre leituras
-    const MIN_VOTOS = 2;               // quadros iguais para considerar um campo "firme"
-    const MIN_CAMPOS_FIRMES = 3;       // campos firmes para confirmar sem o pedido
-    const TEMPO_LIMITE_MS = 4500;      // após esse tempo, confirma se houver o mínimo
-    const MIN_CAMPOS_TEMPO = 2;        // mínimo de campos firmes ao estourar o tempo
-    const QUADROS_VAZIOS_PARA_LIBERAR = 3; // quadros sem nada = ticket saiu
-
-    // numérico: true => aplica correção de letras parecidas com números
-    // identificador: true => usado para detectar ticket duplicado
+    // Campo principal: Nº do Pedido
     const CAMPOS = {
-      pedido:      { rx: /Pedido\s*[:.;]?\s*([0-9SOIlB]{6,8})/i, numerico: true, identificador: true, valida: v => /^\d{6,8}$/.test(v) },
-      atendimento: { rx: /\bAte\s*[:.;]?\s*([0-9SOIlB]{6,8})/i,  numerico: true, identificador: true, valida: v => /^\d{6,8}$/.test(v) },
-      pacs:        { rx: /PACS\s*[:.;]?\s*([0-9SOIlB]{6,9})/i,   numerico: true, identificador: true, valida: v => /^\d{6,9}$/.test(v) },
-      exame:       { rx: /Ex\.?\s*[:.;]?\s*MV[_\s]?([0-9SOIlB]{6,8})/i, numerico: true, identificador: true, formata: v => 'MV_' + v, valida: v => /^MV_\d{6,8}$/.test(v) },
-      nascimento:  { rx: /DN\s*[:.;]?\s*([0-9SOIlB]{2}\s*\/\s*[0-9SOIlB]{2}\s*\/\s*[0-9SOIlB]{4})/i, numerico: true, formata: v => v.replace(/\s/g, ''), valida: v => /^\d{2}\/\d{2}\/\d{4}$/.test(v) },
-      sexo:        { rx: /Sexo\s*[:.;]?\s*([FM])\b/i, formata: v => v.toUpperCase(), valida: v => /^[FM]$/.test(v) },
-      dataAtend:   { rx: /Ate[:.;]?\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?)/i, valida: v => v.length >= 15 },
-      dataAgenda:  { rx: /Agenda\s*[:.;]?\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?)/i, valida: v => v.length >= 15 },
-      convenio:    { rx: /Conv\.?\s*[:.;]?\s*(SUS\s+[A-ZÀ-Ú]+)/i, formata: v => v.toUpperCase().replace(/\s+/g, ' ') },
-      plano:       { rx: /Plano\s*[:.;]?\s*(PLANO\s+[A-ZÀ-Ú]+)/i, formata: v => v.toUpperCase().replace(/\s+/g, ' ') },
-      exameNome:   { rx: /(MMG\s+MAMOGRAF[A-ZÀ-Ú]*\s+[A-ZÀ-Ú]+)/i, formata: v => v.toUpperCase().replace(/\s+/g, ' ') }
+      pedido: {
+        rx: /(?:N[ºo°]?\s*(?:do\s*)?Pedido|Pedido)\s*[:.;]?\s*([0-9SOIlB]{6,8})/i,
+        numerico: true,
+        identificador: true,
+        valida: v => /^\d{6,8}$/.test(v)
+      },
+      atendimento: {
+        rx: /\bAte\s*[:.;]?\s*([0-9SOIlB]{6,8})/i,
+        numerico: true,
+        identificador: true,
+        valida: v => /^\d{6,8}$/.test(v)
+      },
+      pacs: {
+        rx: /PACS\s*[:.;]?\s*([0-9SOIlB]{6,9})/i,
+        numerico: true,
+        identificador: true,
+        valida: v => /^\d{6,9}$/.test(v)
+      },
+      exame: {
+        rx: /Ex\.?\s*[:.;]?\s*MV[_\s]?([0-9SOIlB]{6,8})/i,
+        numerico: true,
+        identificador: true,
+        formata: v => 'MV_' + v,
+        valida: v => /^MV_\d{6,8}$/.test(v)
+      },
+      nascimento: {
+        rx: /DN\s*[:.;]?\s*([0-9SOIlB]{2}\s*\/\s*[0-9SOIlB]{2}\s*\/\s*[0-9SOIlB]{4})/i,
+        numerico: true,
+        formata: v => v.replace(/\s/g, ''),
+        valida: v => /^\d{2}\/\d{2}\/\d{4}$/.test(v)
+      },
+      sexo: {
+        rx: /Sexo\s*[:.;]?\s*([FM])\b/i,
+        formata: v => v.toUpperCase(),
+        valida: v => /^[FM]$/.test(v)
+      },
+      dataAtend: {
+        rx: /Ate[:.;]?\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?)/i,
+        valida: v => v.length >= 15
+      },
+      dataAgenda: {
+        rx: /Agenda\s*[:.;]?\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?)/i,
+        valida: v => v.length >= 15
+      },
+      convenio: {
+        rx: /Conv\.?\s*[:.;]?\s*(SUS\s+[A-ZÀ-Ú]+)/i,
+        formata: v => v.toUpperCase().replace(/\s+/g, ' ')
+      },
+      plano: {
+        rx: /Plano\s*[:.;]?\s*(PLANO\s+[A-ZÀ-Ú]+)/i,
+        formata: v => v.toUpperCase().replace(/\s+/g, ' ')
+      },
+      exameNome: {
+        rx: /(MMG\s+MAMOGRAF[A-ZÀ-Ú]*\s+[A-ZÀ-Ú]+)/i,
+        formata: v => v.toUpperCase().replace(/\s+/g, ' ')
+      }
     };
     // =========================
 
@@ -127,29 +315,47 @@
     const statusEl = document.getElementById('status');
     const erroEl = document.getElementById('erro');
     const camposEl = document.getElementById('campos');
+    const avisoEl = document.getElementById('aviso');
+    const btnEnviar = document.getElementById('btn-enviar');
 
     let worker, lidos = 0, ocupado = false;
-
-    // votos[campo][valor] = contagem, acumulado enquanto o mesmo ticket está na moldura
     let votos = {};
-    let inicioTicket = 0;
     let quadrosVazios = 0;
-    let travado = false;                 // ticket já enviado, aguardando sair da moldura
-    const registrados = new Set();       // identificadores já enviados nesta sessão
+    let travado = false; // leitura pronta, aguardando validação/envio
+    const registrados = new Set();
     let ultimoTextoBruto = '';
+    let atual = { res: {}, firmes: {}, texto: '' };
 
-    // ---- cartões de status dos campos ----
-    const ROTULOS = { pedido:'Pedido', atendimento:'Atendimento', pacs:'PACS', exame:'Nº Exame',
-      nascimento:'Nascimento', sexo:'Sexo', dataAtend:'Data atend.', dataAgenda:'Data agenda',
-      convenio:'Convênio', plano:'Plano', exameNome:'Exame' };
+    const ROTULOS = {
+      pedido: 'Nº do Pedido',
+      atendimento: 'Atendimento',
+      pacs: 'PACS',
+      exame: 'Nº Exame',
+      nascimento: 'Nascimento',
+      sexo: 'Sexo',
+      dataAtend: 'Data atend.',
+      dataAgenda: 'Data agenda',
+      convenio: 'Convênio',
+      plano: 'Plano',
+      exameNome: 'Exame'
+    };
+
+    // Cria os campos (pedido em destaque e editável)
     Object.keys(CAMPOS).forEach(k => {
       const d = document.createElement('div');
-      d.className = 'campo'; d.id = 'campo-' + k;
-      d.innerHTML = '<div class="n">' + (ROTULOS[k] || k) + '</div><div class="v">—</div>';
+      d.className = 'campo' + (k === 'pedido' ? ' principal' : '');
+      d.id = 'campo-' + k;
+      d.innerHTML =
+        '<div class="n">' + (ROTULOS[k] || k) + '</div>' +
+        '<input type="text" data-campo="' + k + '" placeholder="—" autocomplete="off">';
       camposEl.appendChild(d);
     });
-    const btnEnviar = document.getElementById('btn-enviar');
-    let atual = { res: {}, firmes: {}, texto: '' };   // leitura corrente (para envio manual)
+
+    // Atualiza botão de envio quando o usuário edita
+    camposEl.addEventListener('input', () => {
+      const pedidoVal = document.querySelector('input[data-campo="pedido"]').value.trim();
+      btnEnviar.disabled = !pedidoVal;
+    });
 
     const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
     function bipe() {
@@ -163,11 +369,16 @@
       erroEl.textContent = '';
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
           audio: false
         });
         video.srcObject = stream;
         await video.play();
+        document.getElementById('d-cam').textContent = 'ok';
       } catch (e) {
         erroEl.textContent = 'Câmera indisponível: ' + e.message;
         document.getElementById('ativar').style.display = 'block';
@@ -180,7 +391,8 @@
           tessedit_pageseg_mode: '6',
           preserve_interword_spaces: '1'
         });
-        statusEl.textContent = 'Pronto';
+        statusEl.textContent = 'Pronto — aponte o ticket';
+        document.getElementById('d-ocr').textContent = 'ok';
         loop();
       } catch (e) {
         erroEl.textContent = 'Falha ao carregar o OCR: ' + e.message;
@@ -190,41 +402,46 @@
     function recortarMoldura() {
       const rv = video.getBoundingClientRect(), rm = moldura.getBoundingClientRect();
       const vw = video.videoWidth, vh = video.videoHeight;
-      const escala = Math.max(rv.width / vw, rv.height / vh); // object-fit: cover
+      const escala = Math.max(rv.width / vw, rv.height / vh);
       const offX = (vw * escala - rv.width) / 2, offY = (vh * escala - rv.height) / 2;
-      const sx = (rm.left - rv.left + offX) / escala, sy = (rm.top - rv.top + offY) / escala;
+      const sx = (rm.left - rv.left + offX) / escala;
+      const sy = (rm.top - rv.top + offY) / escala;
       const sw = rm.width / escala, sh = rm.height / escala;
-
       const c = document.createElement('canvas');
-      const alvo = Math.min(1.5, 1400 / sw);   // um pouco mais de resolução p/ texto fino
-      c.width = sw * alvo; c.height = sh * alvo;
+      const alvo = Math.min(1.5, 1400 / sw);
+      c.width = sw * alvo;
+      c.height = sh * alvo;
       const ctx = c.getContext('2d');
       ctx.filter = 'grayscale(1) contrast(1.5) brightness(1.05)';
       ctx.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
       return c;
     }
 
+    let nQuadros = 0;
     async function loop() {
-      if (!ocupado && video.videoWidth) {
+      if (!ocupado && video.videoWidth && !travado) {
         ocupado = true;
         try {
           const { data } = await worker.recognize(recortarMoldura());
+          nQuadros++;
+          document.getElementById('d-n').textContent = nQuadros;
           tratar(data.text || '');
-        } catch (e) { /* ignora quadro com erro */ }
+        } catch (e) { /* ignora */ }
         ocupado = false;
       }
       setTimeout(loop, INTERVALO_MS);
     }
 
-    // troca letras parecidas por números (só em campos numéricos).
-    // 'S' vira 9 porque neste ticket o 9 costuma ser lido como S; a votação entre quadros corrige o resto
     function corrigirNumerico(s) {
-      return s.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1').replace(/S/g, '9').replace(/B/g, '8');
+      return s
+        .replace(/[Oo]/g, '0')
+        .replace(/[Il|]/g, '1')
+        .replace(/S/g, '9')
+        .replace(/B/g, '8');
     }
 
     function extrair(texto) {
       const achados = {};
-      // normaliza quebras e espaços estranhos sem perder as linhas
       const t = texto.replace(/[ \t]+/g, ' ');
       for (const [nome, cfg] of Object.entries(CAMPOS)) {
         const m = t.match(cfg.rx);
@@ -245,7 +462,6 @@
       }
     }
 
-    // valor mais votado de cada campo + se já é "firme" (>= MIN_VOTOS)
     function consolidar() {
       const res = {}, firmes = {};
       for (const [campo, mapa] of Object.entries(votos)) {
@@ -259,19 +475,48 @@
     function atualizarChips(res, firmes) {
       Object.keys(CAMPOS).forEach(k => {
         const el = document.getElementById('campo-' + k);
-        const v = el.querySelector('.v');
-        if (firmes[k]) { el.className = 'campo ok'; v.textContent = firmes[k]; }
-        else if (res[k]) { el.className = 'campo palpite'; v.textContent = res[k] + ' ?'; }
-        else { el.className = 'campo'; v.textContent = '—'; }
+        const input = el.querySelector('input');
+        if (firmes[k]) {
+          el.className = 'campo ok' + (k === 'pedido' ? ' principal' : '');
+          input.value = firmes[k];
+        } else if (res[k]) {
+          el.className = 'campo palpite' + (k === 'pedido' ? ' principal' : '');
+          input.value = res[k];
+        } else {
+          el.className = 'campo' + (k === 'pedido' ? ' principal' : '');
+          if (!input.value) input.value = '';
+        }
       });
-      btnEnviar.disabled = Object.keys(res).length === 0;
+
+      // Habilita envio somente se houver Nº do Pedido
+      const pedidoVal = document.querySelector('input[data-campo="pedido"]').value.trim();
+      btnEnviar.disabled = !pedidoVal;
+
+      if (firmes.pedido) {
+        avisoEl.classList.add('visivel');
+        moldura.classList.remove('parcial');
+        moldura.classList.add('lido');
+        estado.textContent = '✅ Pedido lido — confira e envie';
+      } else if (Object.keys(firmes).length > 0 || Object.keys(res).length > 0) {
+        moldura.classList.add('parcial');
+        moldura.classList.remove('lido');
+        estado.textContent = 'Lendo... aguarde o Nº do Pedido';
+      }
     }
 
     function reiniciarTicket() {
-      votos = {}; inicioTicket = 0; quadrosVazios = 0; travado = false;
+      votos = {};
+      quadrosVazios = 0;
+      travado = false;
       moldura.classList.remove('lido', 'parcial');
       estado.textContent = 'Aponte o ticket para a moldura';
-      atualizarChips({}, {});
+      avisoEl.classList.remove('visivel');
+      Object.keys(CAMPOS).forEach(k => {
+        const el = document.getElementById('campo-' + k);
+        el.className = 'campo' + (k === 'pedido' ? ' principal' : '');
+        el.querySelector('input').value = '';
+      });
+      btnEnviar.disabled = true;
       atual = { res: {}, firmes: {}, texto: '' };
     }
 
@@ -279,69 +524,65 @@
       const achados = extrair(texto);
       const qtd = Object.keys(achados).length;
 
-      // nada reconhecido: pode ser que o ticket saiu da moldura
       if (qtd === 0) {
         quadrosVazios++;
-        if (quadrosVazios >= QUADROS_VAZIOS_PARA_LIBERAR) reiniciarTicket();
+        if (quadrosVazios >= QUADROS_VAZIOS_PARA_LIBERAR && !travado) {
+          reiniciarTicket();
+        }
         return;
       }
+
       quadrosVazios = 0;
       ultimoTextoBruto = texto;
+      document.getElementById('d-texto').textContent = texto.trim() || '(vazio)';
 
-      if (travado) {
-        // ticket já enviado: se apareceu um identificador DIFERENTE, é um ticket novo
-        const novo = Object.entries(achados).some(([c, v]) => CAMPOS[c].identificador && !registrados.has(v));
-        if (novo) { reiniciarTicket(); } else { return; }
-      }
+      if (travado) return; // já está aguardando validação do usuário
 
-      if (!inicioTicket) inicioTicket = Date.now();
       votar(achados);
       const { res, firmes } = consolidar();
       atualizarChips(res, firmes);
       atual = { res, firmes, texto };
 
-      const nFirmes = Object.keys(firmes).length;
-      moldura.classList.toggle('parcial', nFirmes > 0);
-      estado.textContent = 'Lendo... ' + nFirmes + ' campo(s) firme(s)';
-
-      const decorrido = Date.now() - inicioTicket;
-      const temPedido = !!firmes.pedido;
-      const ok =
-        temPedido ||
-        nFirmes >= MIN_CAMPOS_FIRMES ||
-        (decorrido >= TEMPO_LIMITE_MS && nFirmes >= MIN_CAMPOS_TEMPO);
-
-      if (ok) confirmar(res, firmes, texto);
+      // Quando o Nº do Pedido estiver firme, trava a leitura e pede validação
+      if (firmes.pedido) {
+        travado = true;
+        bipe();
+        if (navigator.vibrate) navigator.vibrate(80);
+      }
     }
 
-    function confirmar(res, firmes, texto, manual) {
-      // usa campos firmes; completa com o melhor palpite para campos ainda sem consenso
-      const campos = { ...res, ...firmes };
+    // ===== ENVIO MANUAL (só depois da validação do usuário) =====
+    btnEnviar.addEventListener('click', () => {
+      // Lê os valores atuais dos inputs (já editados pelo usuário)
+      const campos = {};
+      Object.keys(CAMPOS).forEach(k => {
+        const val = document.querySelector('input[data-campo="' + k + '"]').value.trim();
+        if (val) campos[k] = val;
+      });
 
-      // duplicado nesta sessão? (qualquer identificador já enviado)
-      const ids = Object.entries(campos).filter(([c]) => CAMPOS[c].identificador).map(([, v]) => v);
-      const jaVisto = ids.some(v => registrados.has(v));
-      ids.forEach(v => registrados.add(v));
-      travado = true;
-
-      moldura.classList.remove('parcial');
-      moldura.classList.add('lido');
-      const rotulo = campos.pedido || campos.atendimento || campos.pacs || campos.exame || '(sem id)';
-
-      if (jaVisto && !manual) {
-        estado.textContent = '⚠️ Já lido: ' + rotulo;
+      if (!campos.pedido) {
+        alert('O Nº do Pedido é obrigatório.');
         return;
       }
-      estado.textContent = '✅ Lido! Pode seguir para o próximo';
-      bipe();
-      if (navigator.vibrate) navigator.vibrate(80);
 
-      const faltando = Object.keys(CAMPOS).filter(k => !firmes[k]);
-      const confianca = Math.round((Object.keys(firmes).length / Object.keys(CAMPOS).length) * 100);
+      // Verifica duplicado nesta sessão
+      const ids = Object.entries(campos)
+        .filter(([c]) => CAMPOS[c] && CAMPOS[c].identificador)
+        .map(([, v]) => v);
+      const jaVisto = ids.some(v => registrados.has(v));
+      ids.forEach(v => registrados.add(v));
+
+      const rotulo = campos.pedido;
+      const firmesKeys = Object.keys(atual.firmes);
+      const faltando = Object.keys(CAMPOS).filter(k => !campos[k]);
+      const confianca = Math.round((firmesKeys.length / Object.keys(CAMPOS).length) * 100);
 
       const item = document.createElement('div');
-      item.textContent = '⏳ ' + rotulo + ' (' + Object.keys(firmes).length + ' campos)';
+      item.textContent = '⏳ ' + rotulo + ' (enviando...)';
       document.getElementById('lista').prepend(item);
+
+      btnEnviar.disabled = true;
+      estado.textContent = 'Enviando...';
 
       fetch(URL_API, {
         method: 'POST',
@@ -349,10 +590,11 @@
         body: JSON.stringify({
           token: TOKEN,
           campos: campos,
-          firmes: Object.keys(firmes),
+          firmes: firmesKeys,
           faltando: faltando,
           confianca: confianca,
-          texto: texto.trim()
+          texto: (atual.texto || ultimoTextoBruto || '').trim(),
+          validado_manual: true
         })
       })
         .then(r => r.json())
@@ -360,14 +602,56 @@
           if (!r.ok) throw new Error(r.erro || 'erro');
           if (r.duplicado) {
             item.textContent = '⚠️ ' + rotulo + ' (já estava na planilha)';
-            return;
+          } else {
+            lidos++;
+            item.textContent = '✔ ' + rotulo + ' (' + confianca + '%)';
+            document.getElementById('contador').textContent = 'Lidos: ' + lidos;
           }
-          lidos++;
-          item.textContent = '✔ ' + rotulo + ' (' + confianca + '%)';
-          document.getElementById('contador').textContent = 'Lidos: ' + lidos;
+          estado.textContent = '✅ Enviado! Remova o ticket ou clique em Limpar';
+          bipe();
         })
-        .catch(err => { item.textContent = '❌ ' + rotulo + ' (falha: ' + err.message + ')'; });
-    }
+        .catch(err => {
+          item.textContent = '❌ ' + rotulo + ' (falha: ' + err.message + ')';
+          estado.textContent = 'Falha no envio — tente novamente';
+          btnEnviar.disabled = false;
+        });
+    });
+
+    document.getElementById('btn-limpar').addEventListener('click', () => {
+      reiniciarTicket();
+    });
+
+    // Diagnóstico
+    document.getElementById('btn-ping').addEventListener('click', () => {
+      document.getElementById('d-back').textContent = 'Testando GET...';
+      fetch(URL_API + '?ping=1')
+        .then(r => r.text())
+        .then(t => { document.getElementById('d-back').textContent = 'GET ok: ' + t.slice(0, 80); })
+        .catch(e => { document.getElementById('d-back').textContent = 'GET falhou: ' + e.message; });
+    });
+
+    document.getElementById('btn-post').addEventListener('click', () => {
+      document.getElementById('d-back').textContent = 'Testando POST...';
+      fetch(URL_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          token: TOKEN,
+          campos: { pedido: '999999', teste: true },
+          firmes: ['pedido'],
+          faltando: [],
+          confianca: 100,
+          texto: 'registro de teste'
+        })
+      })
+        .then(r => r.json())
+        .then(r => {
+          document.getElementById('d-back').textContent = r.ok
+            ? 'POST ok' + (r.duplicado ? ' (duplicado)' : '')
+            : 'POST erro: ' + (r.erro || JSON.stringify(r));
+        })
+        .catch(e => { document.getElementById('d-back').textContent = 'POST falhou: ' + e.message; });
+    });
 
     document.getElementById('ativar').addEventListener('click', () => {
       document.getElementById('ativar').style.display = 'none';
