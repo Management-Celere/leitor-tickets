@@ -3,334 +3,51 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Leitor de tickets | Operação</title>
+  <title>Leitor de tickets</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
   <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0b1118;
-      --surface: #111b26;
-      --surface-raised: #172330;
-      --surface-soft: #1c2a38;
-      --border: #2a3948;
-      --text: #edf3f8;
-      --muted: #91a2b3;
-      --accent: #65d6a5;
-      --accent-strong: #32b981;
-      --warning: #f1c76b;
-      --danger: #ff8585;
-      --radius: 14px;
-    }
-
     * { box-sizing: border-box; }
-    html { min-height: 100%; background: var(--bg); }
-    body {
-      margin: 0;
-      min-height: 100dvh;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      font-size: 14px;
-      line-height: 1.45;
-    }
-
-    button, input { font: inherit; }
-    button { cursor: pointer; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
-    button:focus-visible, summary:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 3px;
-    }
-    button:disabled { cursor: not-allowed; opacity: .45; }
-
-    #topo {
-      min-height: 68px;
-      padding: 14px clamp(16px, 3vw, 32px);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      border-bottom: 1px solid var(--border);
-      background: #0e151e;
-    }
-    .marca { display: flex; flex-direction: column; gap: 2px; }
-    .marca strong { font-size: 16px; font-weight: 650; letter-spacing: -.02em; }
-    .marca small { color: var(--muted); font-size: 12px; }
-    #contador { color: var(--accent); font-weight: 650; white-space: nowrap; }
-    #status { color: var(--muted); text-align: right; }
-
-    main {
-      width: min(1440px, 100%);
-      margin: 0 auto;
-      padding: clamp(16px, 2.5vw, 30px);
-      display: grid;
-      grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr);
-      gap: 22px;
-      align-items: start;
-    }
-    .coluna { min-width: 0; }
-    .cabecalho-secao { margin: 0 0 12px; }
-    .cabecalho-secao h1, .cabecalho-secao h2 {
-      margin: 0;
-      font-size: 18px;
-      letter-spacing: -.025em;
-      font-weight: 650;
-    }
-    .cabecalho-secao p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
-
-    .cartao {
-      min-width: 0;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-      box-shadow: 0 12px 34px rgba(0,0,0,.12);
-    }
-    #camera {
-      position: relative;
-      width: 100%;
-      height: clamp(260px, 38vw, 460px);
-      background: #05090d;
-      overflow: hidden;
-    }
-    video { width: 100%; height: 100%; display: block; object-fit: cover; }
-    #moldura {
-      position: absolute;
-      left: 5%; right: 5%; top: 9%; bottom: 9%;
-      border: 2px solid rgba(238,246,251,.92);
-      border-radius: 12px;
-      box-shadow: 0 0 0 999px rgba(2,7,12,.18);
-      transition: border-color .2s, background .2s;
-      pointer-events: none;
-    }
-    #moldura::after {
-      content: "";
-      position: absolute;
-      left: 12%; right: 12%; top: 50%;
-      border-top: 1px solid rgba(255,255,255,.35);
-    }
-    #moldura.lido { border-color: var(--accent); background: rgba(50,185,129,.12); }
-    #moldura.parcial { border-color: var(--warning); }
-    #estado {
-      position: absolute;
-      left: 16px; right: 16px; bottom: 14px;
-      width: fit-content; max-width: calc(100% - 32px);
-      margin: auto; padding: 7px 12px;
-      border: 1px solid rgba(255,255,255,.14);
-      border-radius: 999px;
-      background: rgba(5,10,15,.78);
-      color: #f4f7fa;
-      text-align: center; font-size: 12px; font-weight: 600;
-      backdrop-filter: blur(8px);
-    }
-    .camera-rodape {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; padding: 14px 16px;
-    }
-    .camera-rodape p { margin: 0; color: var(--muted); font-size: 12px; }
-    #ativar {
-      flex: none; padding: 11px 16px;
-      border: 1px solid var(--accent-strong); border-radius: 9px;
-      background: var(--accent); color: #062216; font-weight: 700;
-    }
-    #ativar:hover { background: #83e5b8; }
-    #erro {
-      margin-top: 10px; color: var(--danger); font-size: 12px;
-      overflow-wrap: anywhere;
-    }
-
-    #painel { min-width: 0; }
-    #acoes { display: flex; gap: 9px; margin-bottom: 14px; }
-    #acoes button {
-      flex: 1; min-height: 42px; padding: 10px 12px;
-      border: 1px solid transparent; border-radius: 9px;
-      font-weight: 650;
-    }
-    #btn-enviar { background: var(--accent); color: #062216; }
-    #btn-enviar:hover:not(:disabled) { background: #83e5b8; }
-    #btn-limpar { background: var(--surface-soft); border-color: var(--border); color: var(--text); }
-    #btn-limpar:hover { background: #263747; }
-
-    .subtitulo {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; margin: 0 0 10px;
-    }
-    .subtitulo h2 { margin: 0; font-size: 14px; font-weight: 650; }
-    .subtitulo span { color: var(--muted); font-size: 11px; }
-
-    #campos {
-      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 9px; margin-bottom: 16px;
-    }
-    .campo {
-      min-width: 0; padding: 11px 12px;
-      border: 1px solid var(--border); border-radius: 10px;
-      background: var(--surface-raised); border-left: 3px solid #425365;
-    }
-    .campo .n {
-      margin-bottom: 5px; color: var(--muted); font-size: 10px;
-      font-weight: 650; text-transform: uppercase; letter-spacing: .07em;
-    }
-    .campo .v { color: #7e8e9e; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
-    .campo.ok { border-left-color: var(--accent); }
-    .campo.ok .v { color: #e5fff1; }
-    .campo.palpite { border-left-color: var(--warning); }
-    .campo.palpite .v { color: #ffe3a0; }
-
-    .progresso-wrap { margin: 0 0 13px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
-    .progresso-info { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 11px; font-weight: 650; }
-    #progresso-texto { color: var(--text); }
-    #progresso-percentual { color: var(--accent); font-variant-numeric: tabular-nums; }
-    .progresso-trilho { height: 5px; overflow: hidden; border-radius: 99px; background: var(--surface-soft); }
-    #progresso-preenchimento { width: 0%; height: 100%; border-radius: inherit; background: var(--accent); transition: width .2s ease; }
-    .progresso-ajuda { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
-
-    details {
-      margin-bottom: 10px; overflow: hidden;
-      border: 1px solid var(--border); border-radius: 11px;
-      background: var(--surface);
-    }
-    summary {
-      padding: 13px 15px; cursor: pointer; font-size: 12px;
-      font-weight: 650; list-style-position: inside;
-    }
-    details[open] summary { border-bottom: 1px solid var(--border); }
-    details > div, details > pre { padding: 12px 15px; }
-    details > div { color: var(--muted); font-size: 12px; }
-    details button {
-      margin: 8px 6px 0 0; padding: 8px 10px;
-      border: 1px solid var(--border); border-radius: 7px;
-      background: var(--surface-soft); color: var(--text); font-size: 11px;
-    }
-    details button:hover { border-color: #5c7388; }
-    #d-back { margin-top: 10px; color: var(--text); }
-    #d-texto {
-      margin: 0; white-space: pre-wrap; overflow-wrap: anywhere;
-      max-height: 220px; overflow: auto; color: #b4e8d0;
-      font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
-    }
-    #lista { padding: 4px 15px 10px; }
-    #lista div {
-      padding: 10px 0; border-bottom: 1px solid var(--border);
-      color: #c8d4df; font-size: 12px; overflow-wrap: anywhere;
-    }
-    #lista div:last-child { border-bottom: 0; }
-
-    @media (max-width: 850px) {
-      main { grid-template-columns: 1fr; gap: 22px; }
-      #camera { height: clamp(220px, 34dvh, 360px); }
-      #painel { grid-row: 2; }
-    }
-    @media (max-width: 520px) {
-      body { font-size: 14px; }
-      #topo {
-        position: sticky; top: 0; z-index: 5;
-        min-height: 62px; padding: 10px 14px;
-        display: grid; grid-template-columns: 1fr auto; gap: 3px 10px;
-      }
-      .marca strong { font-size: 15px; }
-      .marca small { font-size: 11px; }
-      #contador { font-size: 12px; }
-      #status { grid-column: 1 / -1; width: 100%; text-align: left; font-size: 11px; }
-      main { padding: 14px 10px 28px; gap: 22px; }
-      .cabecalho-secao h1, .cabecalho-secao h2 { font-size: 17px; }
-      .cabecalho-secao p { font-size: 12px; }
-      #camera { height: 31dvh; min-height: 210px; max-height: 300px; }
-      #moldura { left: 4%; right: 4%; top: 12%; bottom: 12%; }
-      .camera-rodape { padding: 12px; gap: 10px; }
-      .camera-rodape p { font-size: 11px; }
-      #ativar { width: 100%; min-height: 44px; }
-      #acoes { position: sticky; bottom: 8px; z-index: 3; padding: 8px; margin: 0 0 12px; background: rgba(17,27,38,.96); border: 1px solid var(--border); border-radius: 12px; backdrop-filter: blur(10px); }
-      #acoes button { min-height: 44px; padding: 10px 8px; font-size: 12px; }
-      #campos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-      .campo { padding: 9px; border-radius: 9px; }
-      .campo .n { font-size: 9px; }
-      .campo .v { font-size: 12px; }
-      summary { padding: 13px 12px; }
-      details > div, details > pre { padding: 11px 12px; }
-    }
-    @media (max-width: 360px) {
-      #campos { grid-template-columns: 1fr; }
-      #acoes { flex-direction: column; }
-    }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #14181c; color: #fff; }
+    #topo { padding: 10px 16px; display: flex; justify-content: space-between; font-size: 14px; }
+    #camera { position: relative; width: 100%; background: #000; }
+    video { width: 100%; display: block; max-height: 65vh; object-fit: cover; }
+    #moldura { position: absolute; left: 4%; right: 4%; top: 8%; bottom: 8%;
+               border: 3px solid #fff; border-radius: 10px;
+               transition: border-color .2s, background .2s; }
+    #moldura.lido { border-color: #00cc66; background: rgba(0, 200, 100, .25); }
+    #moldura.parcial { border-color: #ffcc00; }
+    #estado { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center;
+              font-weight: bold; text-shadow: 0 0 6px #000; }
+    #ativar { display: block; margin: 16px auto; padding: 14px 28px; font-size: 16px;
+              border: 0; border-radius: 8px; background: #00cc66; color: #04210f; font-weight: bold; }
+    #erro { padding: 0 16px; color: #ff8888; }
+    #campos { padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+    .chip { padding: 3px 8px; border-radius: 12px; background: #2a3138; color: #889; }
+    .chip.ok { background: #0b5c34; color: #c8ffe0; }
+    #lista { padding: 12px 16px; font-size: 14px; max-height: 25vh; overflow: auto; }
+    #lista div { padding: 4px 0; border-bottom: 1px solid #333; }
   </style>
-
 </head>
 <body>
-  <header id="topo">
-    <div class="marca">
-      <strong>Leitor de tickets</strong>
-      <small>Captura e conferência de dados</small>
-    </div>
+  <div id="topo">
     <span id="contador">Lidos: 0</span>
-    <span id="status">Ative a câmera para começar</span>
-  </header>
+    <span id="status">Toque em Ativar câmera</span>
+  </div>
 
-  <main>
-    <section class="coluna" aria-labelledby="titulo-captura">
-      <div class="cabecalho-secao">
-        <h1 id="titulo-captura">Captura do ticket</h1>
-        <p>Posicione o documento dentro da área indicada e mantenha-o estável.</p>
-      </div>
-      <div class="cartao">
-        <div id="camera">
-          <video id="video" autoplay playsinline muted aria-label="Imagem da câmera"></video>
-          <div id="moldura"></div>
-          <div id="estado" role="status" aria-live="polite">Aponte o ticket para a área de leitura</div>
-        </div>
-        <div class="camera-rodape">
-          <p>A leitura é feita automaticamente enquanto a câmera estiver ativa.</p>
-          <button id="ativar" type="button">Ativar câmera</button>
-        </div>
-      </div>
-      <div id="erro" role="alert" aria-live="polite"></div>
-    </section>
+  <div id="camera">
+    <video id="video" autoplay playsinline muted></video>
+    <div id="moldura"></div>
+    <div id="estado">Aponte o ticket para a moldura</div>
+  </div>
 
-    <section id="painel" class="coluna" aria-labelledby="titulo-conferencia">
-      <div class="cabecalho-secao">
-        <h2 id="titulo-conferencia">Dados reconhecidos</h2>
-        <p>Confira os campos identificados antes do envio.</p>
-      </div>
-      <div id="acoes">
-        <button id="btn-enviar" type="button" disabled>Enviar leitura atual</button>
-        <button id="btn-limpar" type="button">Limpar leitura</button>
-      </div>
-      <div class="progresso-wrap" aria-live="polite">
-        <div class="progresso-info">
-          <span id="progresso-texto">Aguardando leitura</span>
-          <span id="progresso-percentual">0%</span>
-        </div>
-        <div class="progresso-trilho" role="progressbar" aria-label="Campos verificados" aria-valuemin="0" aria-valuemax="11" aria-valuenow="0" id="progresso-barra">
-          <div id="progresso-preenchimento"></div>
-        </div>
-        <p class="progresso-ajuda">A leitura continua no mesmo ticket até todos os campos serem reconhecidos e confirmados em mais de um quadro.</p>
-      </div>
-      <div id="campos" aria-live="polite"></div>
-
-      <details open>
-        <summary>Registros recentes</summary>
-        <div id="lista"><div style="color:var(--muted)">Os registros enviados aparecerão aqui.</div></div>
-      </details>
-
-      <details>
-        <summary>Diagnóstico do sistema</summary>
-        <div>
-          Câmera: <span id="d-cam">aguardando</span> |
-          OCR: <span id="d-ocr">aguardando</span> |
-          Quadros processados: <span id="d-n">0</span><br>
-          <button id="btn-ping" type="button">Testar conexão (GET)</button>
-          <button id="btn-post" type="button">Enviar teste (POST)</button>
-          <div id="d-back">Backend: não testado</div>
-          <p>Texto bruto identificado pelo OCR</p>
-        </div>
-        <pre id="d-texto">(vazio)</pre>
-      </details>
-    </section>
-  </main>
+  <button id="ativar">Ativar câmera</button>
+  <div id="erro"></div>
+  <div id="campos"></div>
+  <div id="lista"></div>
 
   <script>
     // ====== AJUSTE AQUI ======
-    const URL_API = 'https://script.google.com/macros/s/AKfycbwEdmDwZ_EQxJW-HeMRcJmaBi2P3WEE4_atkQb6gNuVgtc7cj25oP6UBeNoLkttrG8y/exec';
+    const URL_API = 'COLE_AQUI_A_URL_DO_APPS_SCRIPT';
     const TOKEN = 'vamosfazerotestedacameraocr'; // igual ao do Código.gs
 
     const INTERVALO_MS = 600;          // tempo entre leituras
@@ -342,20 +59,6 @@
 
     // numérico: true => aplica correção de letras parecidas com números
     // identificador: true => usado para detectar ticket duplicado
-    function dataValida(valor, incluirHora = false) {
-      const regex = incluirHora
-        ? /^(\\d{2})\\/(\\d{2})\\/(\\d{4})\\s+(\\d{2}):(\\d{2})(?::(\\d{2}))?$/
-        : /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/;
-      const m = valor.match(regex);
-      if (!m) return false;
-      const [, dd, mm, yyyy, hh = '00', min = '00', ss = '00'] = m;
-      const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-      return d.getFullYear() === Number(yyyy) &&
-        d.getMonth() === Number(mm) - 1 &&
-        d.getDate() === Number(dd) &&
-        Number(hh) <= 23 && Number(min) <= 59 && Number(ss) <= 59;
-    }
-
     const CAMPOS = {
       pedido:      { rx: /Pedido\s*[:.;]?\s*([0-9SOIlB]{6,8})/i, numerico: true, identificador: true, valida: v => /^\d{6,8}$/.test(v) },
       atendimento: { rx: /\bAte\s*[:.;]?\s*([0-9SOIlB]{6,8})/i,  numerico: true, identificador: true, valida: v => /^\d{6,8}$/.test(v) },
@@ -363,8 +66,8 @@
       exame:       { rx: /Ex\.?\s*[:.;]?\s*MV[_\s]?([0-9SOIlB]{6,8})/i, numerico: true, identificador: true, formata: v => 'MV_' + v, valida: v => /^MV_\d{6,8}$/.test(v) },
       nascimento:  { rx: /DN\s*[:.;]?\s*([0-9SOIlB]{2}\s*\/\s*[0-9SOIlB]{2}\s*\/\s*[0-9SOIlB]{4})/i, numerico: true, formata: v => v.replace(/\s/g, ''), valida: v => /^\d{2}\/\d{2}\/\d{4}$/.test(v) },
       sexo:        { rx: /Sexo\s*[:.;]?\s*([FM])\b/i, formata: v => v.toUpperCase(), valida: v => /^[FM]$/.test(v) },
-      dataAtend:   { rx: /Ate[:.;]?\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?)/i, valida: v => dataValida(v, true) },
-      dataAgenda:  { rx: /Agenda\s*[:.;]?\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?)/i, valida: v => dataValida(v, true) },
+      dataAtend:   { rx: /Ate[:.;]?\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?)/i, valida: v => v.length >= 15 },
+      dataAgenda:  { rx: /Agenda\s*[:.;]?\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?)/i, valida: v => v.length >= 15 },
       convenio:    { rx: /Conv\.?\s*[:.;]?\s*(SUS\s+[A-ZÀ-Ú]+)/i, formata: v => v.toUpperCase().replace(/\s+/g, ' ') },
       plano:       { rx: /Plano\s*[:.;]?\s*(PLANO\s+[A-ZÀ-Ú]+)/i, formata: v => v.toUpperCase().replace(/\s+/g, ' ') },
       exameNome:   { rx: /(MMG\s+MAMOGRAF[A-ZÀ-Ú]*\s+[A-ZÀ-Ú]+)/i, formata: v => v.toUpperCase().replace(/\s+/g, ' ') }
@@ -388,46 +91,15 @@
     const registrados = new Set();       // identificadores já enviados nesta sessão
     let ultimoTextoBruto = '';
 
-    // ---- cartões de status dos campos ----
-    const ROTULOS = { pedido:'Pedido', atendimento:'Atendimento', pacs:'PACS', exame:'Nº Exame',
-      nascimento:'Nascimento', sexo:'Sexo', dataAtend:'Data atend.', dataAgenda:'Data agenda',
-      convenio:'Convênio', plano:'Plano', exameNome:'Exame' };
+    // ---- chips de status dos campos ----
     Object.keys(CAMPOS).forEach(k => {
-      const d = document.createElement('div');
-      d.className = 'campo'; d.id = 'campo-' + k;
-      const nome = document.createElement('div');
-      nome.className = 'n';
-      nome.textContent = ROTULOS[k] || k;
-      const valor = document.createElement('div');
-      valor.className = 'v';
-      valor.textContent = '—';
-      d.append(nome, valor);
-      camposEl.appendChild(d);
+      const s = document.createElement('span');
+      s.className = 'chip'; s.id = 'chip-' + k; s.textContent = k;
+      camposEl.appendChild(s);
     });
-    const btnEnviar = document.getElementById('btn-enviar');
-    let atual = { res: {}, firmes: {}, texto: '' };   // leitura corrente (para envio manual)
 
-    function atualizarProgresso(firmes) {
-      const total = Object.keys(CAMPOS).length;
-      const confirmados = Object.keys(firmes).filter(k => firmes[k]).length;
-      const percentual = Math.round((confirmados / total) * 100);
-      const texto = document.getElementById('progresso-texto');
-      const pct = document.getElementById('progresso-percentual');
-      const barra = document.getElementById('progresso-barra');
-      const preenchimento = document.getElementById('progresso-preenchimento');
-      if (texto) texto.textContent = confirmados === total
-        ? 'Todos os campos confirmados'
-        : `${confirmados} de ${total} campos confirmados`;
-      if (pct) pct.textContent = percentual + '%';
-      if (barra) barra.setAttribute('aria-valuenow', String(confirmados));
-      if (preenchimento) preenchimento.style.width = percentual + '%';
-    }
-
-
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    const ctxAudio = AudioContextClass ? new AudioContextClass() : null;
+    const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
     function bipe() {
-      if (!ctxAudio) return;
       const o = ctxAudio.createOscillator(), g = ctxAudio.createGain();
       o.connect(g); g.connect(ctxAudio.destination);
       o.frequency.value = 1000; g.gain.value = 0.2;
@@ -437,15 +109,11 @@
     async function iniciar() {
       erroEl.textContent = '';
       try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error('Este navegador não oferece acesso à câmera. Abra a página em HTTPS ou em localhost.');
-        }
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
           audio: false
         });
         video.srcObject = stream;
-        document.getElementById('d-cam').textContent = 'ativa';
         await video.play();
       } catch (e) {
         erroEl.textContent = 'Câmera indisponível: ' + e.message;
@@ -459,7 +127,7 @@
           tessedit_pageseg_mode: '6',
           preserve_interword_spaces: '1'
         });
-        statusEl.textContent = 'Leitor pronto';
+        statusEl.textContent = 'Pronto';
         loop();
       } catch (e) {
         erroEl.textContent = 'Falha ao carregar o OCR: ' + e.message;
@@ -488,10 +156,6 @@
         ocupado = true;
         try {
           const { data } = await worker.recognize(recortarMoldura());
-          const diagN = document.getElementById('d-n');
-          diagN.textContent = String((Number(diagN.textContent) || 0) + 1);
-          document.getElementById('d-ocr').textContent = 'ativo';
-          document.getElementById('d-texto').textContent = (data.text || '').trim() || '(nenhum texto reconhecido)';
           tratar(data.text || '');
         } catch (e) { /* ignora quadro com erro */ }
         ocupado = false;
@@ -499,10 +163,9 @@
       setTimeout(loop, INTERVALO_MS);
     }
 
-    // troca letras parecidas por números (só em campos numéricos).
-    // 'S' vira 9 porque neste ticket o 9 costuma ser lido como S; a votação entre quadros corrige o resto
+    // troca letras parecidas por números (só em campos numéricos)
     function corrigirNumerico(s) {
-      return s.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1').replace(/S/g, '9').replace(/B/g, '8');
+      return s.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1').replace(/S/g, '5').replace(/B/g, '8');
     }
 
     function extrair(texto) {
@@ -541,14 +204,10 @@
 
     function atualizarChips(res, firmes) {
       Object.keys(CAMPOS).forEach(k => {
-        const el = document.getElementById('campo-' + k);
-        const v = el.querySelector('.v');
-        if (firmes[k]) { el.className = 'campo ok'; v.textContent = firmes[k]; }
-        else if (res[k]) { el.className = 'campo palpite'; v.textContent = res[k] + ' ?'; }
-        else { el.className = 'campo'; v.textContent = '—'; }
+        const el = document.getElementById('chip-' + k);
+        el.className = 'chip' + (firmes[k] ? ' ok' : '');
+        el.textContent = firmes[k] ? k + ': ' + firmes[k] : (res[k] ? k + ': ?' : k);
       });
-      atualizarProgresso(firmes);
-      btnEnviar.disabled = !Object.keys(CAMPOS).every(k => Boolean(firmes[k]));
     }
 
     function reiniciarTicket() {
@@ -556,8 +215,6 @@
       moldura.classList.remove('lido', 'parcial');
       estado.textContent = 'Aponte o ticket para a moldura';
       atualizarChips({}, {});
-      atualizarProgresso({});
-      atual = { res: {}, firmes: {}, texto: '' };
     }
 
     function tratar(texto) {
@@ -583,22 +240,22 @@
       votar(achados);
       const { res, firmes } = consolidar();
       atualizarChips(res, firmes);
-      atual = { res, firmes, texto };
 
-      const nFirmes = Object.keys(firmes).filter(k => firmes[k]).length;
-      const totalCampos = Object.keys(CAMPOS).length;
-      const todosConfirmados = Object.keys(CAMPOS).every(k => Boolean(firmes[k]));
-      moldura.classList.toggle('parcial', nFirmes > 0 && !todosConfirmados);
+      const nFirmes = Object.keys(firmes).length;
+      moldura.classList.toggle('parcial', nFirmes > 0);
+      estado.textContent = 'Lendo... ' + nFirmes + ' campo(s) firme(s)';
 
-      if (todosConfirmados) {
-        estado.textContent = 'Todos os campos confirmados. Registrando ticket.';
-        confirmar(res, firmes, texto);
-      } else {
-        estado.textContent = `Verificando ticket: ${nFirmes} de ${totalCampos} campos confirmados`;
-      }
+      const decorrido = Date.now() - inicioTicket;
+      const temPedido = !!firmes.pedido;
+      const ok =
+        temPedido ||
+        nFirmes >= MIN_CAMPOS_FIRMES ||
+        (decorrido >= TEMPO_LIMITE_MS && nFirmes >= MIN_CAMPOS_TEMPO);
+
+      if (ok) confirmar(res, firmes, texto);
     }
 
-    function confirmar(res, firmes, texto, manual) {
+    function confirmar(res, firmes, texto) {
       // usa campos firmes; completa com o melhor palpite para campos ainda sem consenso
       const campos = { ...res, ...firmes };
 
@@ -612,11 +269,11 @@
       moldura.classList.add('lido');
       const rotulo = campos.pedido || campos.atendimento || campos.pacs || campos.exame || '(sem id)';
 
-      if (jaVisto && !manual) {
-        estado.textContent = 'Este ticket já foi lido: ' + rotulo;
+      if (jaVisto) {
+        estado.textContent = '⚠️ Já lido: ' + rotulo;
         return;
       }
-      estado.textContent = 'Leitura confirmada. Posicione o próximo ticket.';
+      estado.textContent = '✅ Lido! Pode seguir para o próximo';
       bipe();
       if (navigator.vibrate) navigator.vibrate(80);
 
@@ -624,7 +281,7 @@
       const confianca = Math.round((Object.keys(firmes).length / Object.keys(CAMPOS).length) * 100);
 
       const item = document.createElement('div');
-      item.textContent = 'Enviando: ' + rotulo + ' (' + Object.keys(firmes).length + ' campos confirmados)';
+      item.textContent = '⏳ ' + rotulo + ' (' + Object.keys(firmes).length + ' campos)';
       document.getElementById('lista').prepend(item);
 
       fetch(URL_API, {
@@ -643,37 +300,20 @@
         .then(r => {
           if (!r.ok) throw new Error(r.erro || 'erro');
           if (r.duplicado) {
-            item.textContent = rotulo + ' — registro já existente na planilha';
+            item.textContent = '⚠️ ' + rotulo + ' (já estava na planilha)';
             return;
           }
           lidos++;
-          item.textContent = rotulo + ' — enviado (' + confianca + '% de confiança)';
+          item.textContent = '✔ ' + rotulo + ' (' + confianca + '%)';
           document.getElementById('contador').textContent = 'Lidos: ' + lidos;
         })
-        .catch(err => { item.textContent = rotulo + ' — falha no envio: ' + err.message; });
+        .catch(err => { item.textContent = '❌ ' + rotulo + ' (falha: ' + err.message + ')'; });
     }
-
-    btnEnviar.addEventListener('click', () => {
-      const todosConfirmados = Object.keys(CAMPOS).every(k => Boolean(atual.firmes[k]));
-      if (!todosConfirmados || travado) return;
-      confirmar(atual.res, atual.firmes, atual.texto, true);
-    });
-
-    document.getElementById('btn-limpar').addEventListener('click', () => {
-      reiniciarTicket();
-      statusEl.textContent = worker ? 'Leitor pronto' : 'Ative a câmera para começar';
-    });
 
     document.getElementById('ativar').addEventListener('click', () => {
       document.getElementById('ativar').style.display = 'none';
-      if (ctxAudio) ctxAudio.resume();
+      ctxAudio.resume();
       iniciar();
-    });
-
-    window.addEventListener('pagehide', () => {
-      const stream = video.srcObject;
-      if (stream && stream.getTracks) stream.getTracks().forEach(track => track.stop());
-      if (worker) worker.terminate();
     });
   </script>
 </body>
