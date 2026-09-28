@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leitor de tickets</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #14181c; color: #fff; }
+    #topo { padding: 10px 16px; display: flex; justify-content: space-between; font-size: 14px; }
+    #camera { position: relative; width: 100%; background: #000; }
+    video { width: 100%; display: block; max-height: 65vh; object-fit: cover; }
+    #moldura { position: absolute; left: 8%; right: 8%; top: 30%; bottom: 30%;
+               border: 3px solid #fff; border-radius: 10px;
+               transition: border-color .2s, background .2s; }
+    #moldura.lido { border-color: #00cc66; background: rgba(0, 200, 100, .25); }
+    #estado { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center;
+              font-weight: bold; text-shadow: 0 0 6px #000; }
+    #ativar { display: block; margin: 16px auto; padding: 14px 28px; font-size: 16px;
+              border: 0; border-radius: 8px; background: #00cc66; color: #04210f; font-weight: bold; }
+    #erro { padding: 0 16px; color: #ff8888; }
+    #lista { padding: 12px 16px; font-size: 14px; max-height: 25vh; overflow: auto; }
+    #lista div { padding: 4px 0; border-bottom: 1px solid #333; }
+  </style>
+</head>
+<body>
+  <div id="topo">
+    <span id="contador">Lidos: 0</span>
+    <span id="status">Toque em Ativar câmera</span>
+  </div>
+
+  <div id="camera">
+    <video id="video" autoplay playsinline muted></video>
+    <div id="moldura"></div>
+    <div id="estado">Aponte o ticket para a moldura</div>
+  </div>
+
+  <button id="ativar">Ativar câmera</button>
+  <div id="erro"></div>
+  <div id="lista"></div>
+
+  <script>
+    // ====== AJUSTE AQUI ======
+    const URL_API = 'COLE_AQUI_A_URL_/exec';
+    const TOKEN = 'troque-por-uma-senha-longa-e-aleatoria'; // igual ao do Código.gs
+
+    // Padrão do que deve ser capturado no ticket (exemplo: CPF).
+    // Troque pela regex do seu documento. Ex.: 8 dígitos -> /\b\d{8}\b/
+    const PADRAO = /\d{3}\.?\d{3}\.?\d{3}-?\d{2}/;
+    const INTERVALO_MS = 700;         // tempo entre leituras
+    const LEITURAS_PARA_CONFIRMAR = 2; // leituras iguais seguidas para validar
+    // =========================
+
+    const video = document.getElementById('video');
+    const moldura = document.getElementById('moldura');
+    const estado = document.getElementById('estado');
+    const statusEl = document.getElementById('status');
+    const erroEl = document.getElementById('erro');
+
+    let worker, lidos = 0;
+    let ultimoValor = null, repeticoes = 0;
+    let bloqueado = null;   // valor já registrado, aguardando o ticket sair da moldura
+    let semLeitura = 0;
+    let ocupado = false;
+
+    const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+    function bipe() {
+      const o = ctxAudio.createOscillator(), g = ctxAudio.createGain();
+      o.connect(g); g.connect(ctxAudio.destination);
+      o.frequency.value = 1000; g.gain.value = 0.2;
+      o.start(); o.stop(ctxAudio.currentTime + 0.15);
+    }
+
+    async function iniciar() {
+      erroEl.textContent = '';
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false
+        });
+        video.srcObject = stream;
+        await video.play();
+      } catch (e) {
+        erroEl.textContent = 'Câmera indisponível: ' + e.message;
+        document.getElementById('ativar').style.display = 'block';
+        return;
+      }
+      statusEl.textContent = 'Carregando leitor...';
+      try {
+        worker = await Tesseract.createWorker('por');
+        statusEl.textContent = 'Pronto';
+        loop();
+      } catch (e) {
+        erroEl.textContent = 'Falha ao carregar o OCR: ' + e.message;
+      }
+    }
+
+    function recortarMoldura() {
+      // converte a área da moldura (na tela) para pixels reais do vídeo
+      const rv = video.getBoundingClientRect(), rm = moldura.getBoundingClientRect();
+      const vw = video.videoWidth, vh = video.videoHeight;
+      const escala = Math.max(rv.width / vw, rv.height / vh); // object-fit: cover
+      const offX = (vw * escala - rv.width) / 2, offY = (vh * escala - rv.height) / 2;
+      const sx = (rm.left - rv.left + offX) / escala, sy = (rm.top - rv.top + offY) / escala;
+      const sw = rm.width / escala, sh = rm.height / escala;
+
+      const c = document.createElement('canvas');
+      const alvo = Math.min(1, 1000 / sw);
+      c.width = sw * alvo; c.height = sh * alvo;
+      const ctx = c.getContext('2d');
+      ctx.filter = 'grayscale(1) contrast(1.4)';
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
+      return c;
+    }
+
+    async function loop() {
+      if (!ocupado && video.videoWidth) {
+        ocupado = true;
+        try {
+          const { data } = await worker.recognize(recortarMoldura());
+          tratar(data.text || '');
+        } catch (e) { /* ignora quadro com erro */ }
+        ocupado = false;
+      }
+      setTimeout(loop, INTERVALO_MS);
+    }
+
+    function tratar(texto) {
+      const m = texto.match(PADRAO);
+      const valor = m ? m[0].replace(/\s+/g, '') : null;
+
+      if (!valor) {
+        semLeitura++;
+        // ticket saiu da moldura: libera para o próximo
+        if (semLeitura >= 2) {
+          bloqueado = null; ultimoValor = null; repeticoes = 0;
+          moldura.classList.remove('lido');
+          estado.textContent = 'Aponte o ticket para a moldura';
+        }
+        return;
+      }
+      semLeitura = 0;
+      if (valor === bloqueado) return; // já registrado, aguardando trocar de ticket
+
+      if (valor === ultimoValor) repeticoes++; else { ultimoValor = valor; repeticoes = 1; }
+      estado.textContent = 'Lendo... ' + valor;
+
+      if (repeticoes >= LEITURAS_PARA_CONFIRMAR) confirmar(valor, texto);
+    }
+
+    function confirmar(valor, texto) {
+      bloqueado = valor; repeticoes = 0;
+      moldura.classList.add('lido');
+      estado.textContent = '✅ Lido! Pode seguir para o próximo';
+      bipe();
+      if (navigator.vibrate) navigator.vibrate(80);
+
+      const item = document.createElement('div');
+      item.textContent = '⏳ ' + valor;
+      document.getElementById('lista').prepend(item);
+
+      // text/plain evita a checagem CORS prévia, que o Apps Script não responde
+      fetch(URL_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ token: TOKEN, valor: valor, texto: texto.trim() })
+      })
+        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) throw new Error(r.erro || 'erro');
+          lidos++; item.textContent = '✔ ' + valor;
+          document.getElementById('contador').textContent = 'Lidos: ' + lidos;
+        })
+        .catch(err => { item.textContent = '❌ ' + valor + ' (falha: ' + err.message + ')'; });
+    }
+
+    // O pedido de permissão parte de um toque do usuário
+    document.getElementById('ativar').addEventListener('click', () => {
+      document.getElementById('ativar').style.display = 'none';
+      ctxAudio.resume();
+      iniciar();
+    });
+  </script>
+</body>
+</html>
