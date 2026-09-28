@@ -11,15 +11,19 @@
     #topo { padding: 10px 16px; display: flex; justify-content: space-between; font-size: 14px; }
     #camera { position: relative; width: 100%; background: #000; }
     video { width: 100%; display: block; max-height: 65vh; object-fit: cover; }
-    #moldura { position: absolute; left: 8%; right: 8%; top: 30%; bottom: 30%;
+    #moldura { position: absolute; left: 4%; right: 4%; top: 8%; bottom: 8%;
                border: 3px solid #fff; border-radius: 10px;
                transition: border-color .2s, background .2s; }
     #moldura.lido { border-color: #00cc66; background: rgba(0, 200, 100, .25); }
+    #moldura.parcial { border-color: #ffcc00; }
     #estado { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center;
               font-weight: bold; text-shadow: 0 0 6px #000; }
     #ativar { display: block; margin: 16px auto; padding: 14px 28px; font-size: 16px;
               border: 0; border-radius: 8px; background: #00cc66; color: #04210f; font-weight: bold; }
     #erro { padding: 0 16px; color: #ff8888; }
+    #campos { padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+    .chip { padding: 3px 8px; border-radius: 12px; background: #2a3138; color: #889; }
+    .chip.ok { background: #0b5c34; color: #c8ffe0; }
     #lista { padding: 12px 16px; font-size: 14px; max-height: 25vh; overflow: auto; }
     #lista div { padding: 4px 0; border-bottom: 1px solid #333; }
   </style>
@@ -38,18 +42,36 @@
 
   <button id="ativar">Ativar câmera</button>
   <div id="erro"></div>
+  <div id="campos"></div>
   <div id="lista"></div>
 
   <script>
     // ====== AJUSTE AQUI ======
-    const URL_API = 'COLE_AQUI_A_URL_/exec';
-    const TOKEN = 'troque-por-uma-senha-longa-e-aleatoria'; // igual ao do Código.gs
+    const URL_API = 'COLE_AQUI_A_URL_DO_APPS_SCRIPT';
+    const TOKEN = 'vamosfazerotestedacameraocr'; // igual ao do Código.gs
 
-    // Padrão do que deve ser capturado no ticket (exemplo: CPF).
-    // Troque pela regex do seu documento. Ex.: 8 dígitos -> /\b\d{8}\b/
-    const PADRAO = /\d{3}\.?\d{3}\.?\d{3}-?\d{2}/;
-    const INTERVALO_MS = 700;         // tempo entre leituras
-    const LEITURAS_PARA_CONFIRMAR = 2; // leituras iguais seguidas para validar
+    const INTERVALO_MS = 600;          // tempo entre leituras
+    const MIN_VOTOS = 2;               // quadros iguais para considerar um campo "firme"
+    const MIN_CAMPOS_FIRMES = 3;       // campos firmes para confirmar sem o pedido
+    const TEMPO_LIMITE_MS = 4500;      // após esse tempo, confirma se houver o mínimo
+    const MIN_CAMPOS_TEMPO = 2;        // mínimo de campos firmes ao estourar o tempo
+    const QUADROS_VAZIOS_PARA_LIBERAR = 3; // quadros sem nada = ticket saiu
+
+    // numérico: true => aplica correção de letras parecidas com números
+    // identificador: true => usado para detectar ticket duplicado
+    const CAMPOS = {
+      pedido:      { rx: /Pedido\s*[:.;]?\s*([0-9SOIlB]{6,8})/i, numerico: true, identificador: true, valida: v => /^\d{6,8}$/.test(v) },
+      atendimento: { rx: /\bAte\s*[:.;]?\s*([0-9SOIlB]{6,8})/i,  numerico: true, identificador: true, valida: v => /^\d{6,8}$/.test(v) },
+      pacs:        { rx: /PACS\s*[:.;]?\s*([0-9SOIlB]{6,9})/i,   numerico: true, identificador: true, valida: v => /^\d{6,9}$/.test(v) },
+      exame:       { rx: /Ex\.?\s*[:.;]?\s*MV[_\s]?([0-9SOIlB]{6,8})/i, numerico: true, identificador: true, formata: v => 'MV_' + v, valida: v => /^MV_\d{6,8}$/.test(v) },
+      nascimento:  { rx: /DN\s*[:.;]?\s*([0-9SOIlB]{2}\s*\/\s*[0-9SOIlB]{2}\s*\/\s*[0-9SOIlB]{4})/i, numerico: true, formata: v => v.replace(/\s/g, ''), valida: v => /^\d{2}\/\d{2}\/\d{4}$/.test(v) },
+      sexo:        { rx: /Sexo\s*[:.;]?\s*([FM])\b/i, formata: v => v.toUpperCase(), valida: v => /^[FM]$/.test(v) },
+      dataAtend:   { rx: /Ate[:.;]?\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?)/i, valida: v => v.length >= 15 },
+      dataAgenda:  { rx: /Agenda\s*[:.;]?\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?)/i, valida: v => v.length >= 15 },
+      convenio:    { rx: /Conv\.?\s*[:.;]?\s*(SUS\s+[A-ZÀ-Ú]+)/i, formata: v => v.toUpperCase().replace(/\s+/g, ' ') },
+      plano:       { rx: /Plano\s*[:.;]?\s*(PLANO\s+[A-ZÀ-Ú]+)/i, formata: v => v.toUpperCase().replace(/\s+/g, ' ') },
+      exameNome:   { rx: /(MMG\s+MAMOGRAF[A-ZÀ-Ú]*\s+[A-ZÀ-Ú]+)/i, formata: v => v.toUpperCase().replace(/\s+/g, ' ') }
+    };
     // =========================
 
     const video = document.getElementById('video');
@@ -57,12 +79,24 @@
     const estado = document.getElementById('estado');
     const statusEl = document.getElementById('status');
     const erroEl = document.getElementById('erro');
+    const camposEl = document.getElementById('campos');
 
-    let worker, lidos = 0;
-    let ultimoValor = null, repeticoes = 0;
-    let bloqueado = null;   // valor já registrado, aguardando o ticket sair da moldura
-    let semLeitura = 0;
-    let ocupado = false;
+    let worker, lidos = 0, ocupado = false;
+
+    // votos[campo][valor] = contagem, acumulado enquanto o mesmo ticket está na moldura
+    let votos = {};
+    let inicioTicket = 0;
+    let quadrosVazios = 0;
+    let travado = false;                 // ticket já enviado, aguardando sair da moldura
+    const registrados = new Set();       // identificadores já enviados nesta sessão
+    let ultimoTextoBruto = '';
+
+    // ---- chips de status dos campos ----
+    Object.keys(CAMPOS).forEach(k => {
+      const s = document.createElement('span');
+      s.className = 'chip'; s.id = 'chip-' + k; s.textContent = k;
+      camposEl.appendChild(s);
+    });
 
     const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
     function bipe() {
@@ -89,6 +123,10 @@
       statusEl.textContent = 'Carregando leitor...';
       try {
         worker = await Tesseract.createWorker('por');
+        await worker.setParameters({
+          tessedit_pageseg_mode: '6',
+          preserve_interword_spaces: '1'
+        });
         statusEl.textContent = 'Pronto';
         loop();
       } catch (e) {
@@ -97,7 +135,6 @@
     }
 
     function recortarMoldura() {
-      // converte a área da moldura (na tela) para pixels reais do vídeo
       const rv = video.getBoundingClientRect(), rm = moldura.getBoundingClientRect();
       const vw = video.videoWidth, vh = video.videoHeight;
       const escala = Math.max(rv.width / vw, rv.height / vh); // object-fit: cover
@@ -106,10 +143,10 @@
       const sw = rm.width / escala, sh = rm.height / escala;
 
       const c = document.createElement('canvas');
-      const alvo = Math.min(1, 1000 / sw);
+      const alvo = Math.min(1.5, 1400 / sw);   // um pouco mais de resolução p/ texto fino
       c.width = sw * alvo; c.height = sh * alvo;
       const ctx = c.getContext('2d');
-      ctx.filter = 'grayscale(1) contrast(1.4)';
+      ctx.filter = 'grayscale(1) contrast(1.5) brightness(1.05)';
       ctx.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
       return c;
     }
@@ -126,56 +163,153 @@
       setTimeout(loop, INTERVALO_MS);
     }
 
-    function tratar(texto) {
-      const m = texto.match(PADRAO);
-      const valor = m ? m[0].replace(/\s+/g, '') : null;
-
-      if (!valor) {
-        semLeitura++;
-        // ticket saiu da moldura: libera para o próximo
-        if (semLeitura >= 2) {
-          bloqueado = null; ultimoValor = null; repeticoes = 0;
-          moldura.classList.remove('lido');
-          estado.textContent = 'Aponte o ticket para a moldura';
-        }
-        return;
-      }
-      semLeitura = 0;
-      if (valor === bloqueado) return; // já registrado, aguardando trocar de ticket
-
-      if (valor === ultimoValor) repeticoes++; else { ultimoValor = valor; repeticoes = 1; }
-      estado.textContent = 'Lendo... ' + valor;
-
-      if (repeticoes >= LEITURAS_PARA_CONFIRMAR) confirmar(valor, texto);
+    // troca letras parecidas por números (só em campos numéricos)
+    function corrigirNumerico(s) {
+      return s.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1').replace(/S/g, '5').replace(/B/g, '8');
     }
 
-    function confirmar(valor, texto) {
-      bloqueado = valor; repeticoes = 0;
+    function extrair(texto) {
+      const achados = {};
+      // normaliza quebras e espaços estranhos sem perder as linhas
+      const t = texto.replace(/[ \t]+/g, ' ');
+      for (const [nome, cfg] of Object.entries(CAMPOS)) {
+        const m = t.match(cfg.rx);
+        if (!m) continue;
+        let v = (m[1] || m[0]).trim();
+        if (cfg.numerico) v = corrigirNumerico(v);
+        if (cfg.formata) v = cfg.formata(v);
+        if (cfg.valida && !cfg.valida(v)) continue;
+        achados[nome] = v;
+      }
+      return achados;
+    }
+
+    function votar(achados) {
+      for (const [campo, valor] of Object.entries(achados)) {
+        votos[campo] = votos[campo] || {};
+        votos[campo][valor] = (votos[campo][valor] || 0) + 1;
+      }
+    }
+
+    // valor mais votado de cada campo + se já é "firme" (>= MIN_VOTOS)
+    function consolidar() {
+      const res = {}, firmes = {};
+      for (const [campo, mapa] of Object.entries(votos)) {
+        const [valor, n] = Object.entries(mapa).sort((a, b) => b[1] - a[1])[0];
+        res[campo] = valor;
+        if (n >= MIN_VOTOS) firmes[campo] = valor;
+      }
+      return { res, firmes };
+    }
+
+    function atualizarChips(res, firmes) {
+      Object.keys(CAMPOS).forEach(k => {
+        const el = document.getElementById('chip-' + k);
+        el.className = 'chip' + (firmes[k] ? ' ok' : '');
+        el.textContent = firmes[k] ? k + ': ' + firmes[k] : (res[k] ? k + ': ?' : k);
+      });
+    }
+
+    function reiniciarTicket() {
+      votos = {}; inicioTicket = 0; quadrosVazios = 0; travado = false;
+      moldura.classList.remove('lido', 'parcial');
+      estado.textContent = 'Aponte o ticket para a moldura';
+      atualizarChips({}, {});
+    }
+
+    function tratar(texto) {
+      const achados = extrair(texto);
+      const qtd = Object.keys(achados).length;
+
+      // nada reconhecido: pode ser que o ticket saiu da moldura
+      if (qtd === 0) {
+        quadrosVazios++;
+        if (quadrosVazios >= QUADROS_VAZIOS_PARA_LIBERAR) reiniciarTicket();
+        return;
+      }
+      quadrosVazios = 0;
+      ultimoTextoBruto = texto;
+
+      if (travado) {
+        // ticket já enviado: se apareceu um identificador DIFERENTE, é um ticket novo
+        const novo = Object.entries(achados).some(([c, v]) => CAMPOS[c].identificador && !registrados.has(v));
+        if (novo) { reiniciarTicket(); } else { return; }
+      }
+
+      if (!inicioTicket) inicioTicket = Date.now();
+      votar(achados);
+      const { res, firmes } = consolidar();
+      atualizarChips(res, firmes);
+
+      const nFirmes = Object.keys(firmes).length;
+      moldura.classList.toggle('parcial', nFirmes > 0);
+      estado.textContent = 'Lendo... ' + nFirmes + ' campo(s) firme(s)';
+
+      const decorrido = Date.now() - inicioTicket;
+      const temPedido = !!firmes.pedido;
+      const ok =
+        temPedido ||
+        nFirmes >= MIN_CAMPOS_FIRMES ||
+        (decorrido >= TEMPO_LIMITE_MS && nFirmes >= MIN_CAMPOS_TEMPO);
+
+      if (ok) confirmar(res, firmes, texto);
+    }
+
+    function confirmar(res, firmes, texto) {
+      // usa campos firmes; completa com o melhor palpite para campos ainda sem consenso
+      const campos = { ...res, ...firmes };
+
+      // duplicado nesta sessão? (qualquer identificador já enviado)
+      const ids = Object.entries(campos).filter(([c]) => CAMPOS[c].identificador).map(([, v]) => v);
+      const jaVisto = ids.some(v => registrados.has(v));
+      ids.forEach(v => registrados.add(v));
+      travado = true;
+
+      moldura.classList.remove('parcial');
       moldura.classList.add('lido');
+      const rotulo = campos.pedido || campos.atendimento || campos.pacs || campos.exame || '(sem id)';
+
+      if (jaVisto) {
+        estado.textContent = '⚠️ Já lido: ' + rotulo;
+        return;
+      }
       estado.textContent = '✅ Lido! Pode seguir para o próximo';
       bipe();
       if (navigator.vibrate) navigator.vibrate(80);
 
+      const faltando = Object.keys(CAMPOS).filter(k => !firmes[k]);
+      const confianca = Math.round((Object.keys(firmes).length / Object.keys(CAMPOS).length) * 100);
+
       const item = document.createElement('div');
-      item.textContent = '⏳ ' + valor;
+      item.textContent = '⏳ ' + rotulo + ' (' + Object.keys(firmes).length + ' campos)';
       document.getElementById('lista').prepend(item);
 
-      // text/plain evita a checagem CORS prévia, que o Apps Script não responde
       fetch(URL_API, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ token: TOKEN, valor: valor, texto: texto.trim() })
+        body: JSON.stringify({
+          token: TOKEN,
+          campos: campos,
+          firmes: Object.keys(firmes),
+          faltando: faltando,
+          confianca: confianca,
+          texto: texto.trim()
+        })
       })
         .then(r => r.json())
         .then(r => {
           if (!r.ok) throw new Error(r.erro || 'erro');
-          lidos++; item.textContent = '✔ ' + valor;
+          if (r.duplicado) {
+            item.textContent = '⚠️ ' + rotulo + ' (já estava na planilha)';
+            return;
+          }
+          lidos++;
+          item.textContent = '✔ ' + rotulo + ' (' + confianca + '%)';
           document.getElementById('contador').textContent = 'Lidos: ' + lidos;
         })
-        .catch(err => { item.textContent = '❌ ' + valor + ' (falha: ' + err.message + ')'; });
+        .catch(err => { item.textContent = '❌ ' + rotulo + ' (falha: ' + err.message + ')'; });
     }
 
-    // O pedido de permissão parte de um toque do usuário
     document.getElementById('ativar').addEventListener('click', () => {
       document.getElementById('ativar').style.display = 'none';
       ctxAudio.resume();
