@@ -210,7 +210,7 @@
 
   <div id="painel">
     <div class="aviso-validacao" id="aviso">
-      Confira os dados abaixo (principalmente o <strong>Nº do Pedido</strong>) e clique em <strong>Enviar agora</strong>.
+      Confira os dados (principalmente o <strong>Nº do Pedido</strong>) e clique em <strong>Enviar agora</strong>.
     </div>
 
     <div id="acoes">
@@ -244,11 +244,10 @@
     // ====== AJUSTE AQUI ======
     const URL_API = 'https://script.google.com/macros/s/AKfycbwEdmDwZ_EQxJW-HeMRcJmaBi2P3WEE4_atkQb6gNuVgtc7cj25oP6UBeNoLkttrG8y/exec';
     const TOKEN = 'vamosfazerotestedacameraocr';
-    const INTERVALO_MS = 600;
-    const MIN_VOTOS = 2;
-    const QUADROS_VAZIOS_PARA_LIBERAR = 3;
+    const INTERVALO_MS = 350;          // mais rápido (era 600)
+    const MIN_VOTOS = 1;               // pedido trava mais cedo (era 2)
+    const QUADROS_VAZIOS_PARA_LIBERAR = 2;
 
-    // Campo principal: Nº do Pedido
     const CAMPOS = {
       pedido: {
         rx: /(?:N[ºo°]?\s*(?:do\s*)?Pedido|Pedido)\s*[:.;]?\s*([0-9SOIlB]{6,8})/i,
@@ -321,7 +320,7 @@
     let worker, lidos = 0, ocupado = false;
     let votos = {};
     let quadrosVazios = 0;
-    let travado = false; // leitura pronta, aguardando validação/envio
+    let travado = false;
     const registrados = new Set();
     let ultimoTextoBruto = '';
     let atual = { res: {}, firmes: {}, texto: '' };
@@ -340,7 +339,6 @@
       exameNome: 'Exame'
     };
 
-    // Cria os campos (pedido em destaque e editável)
     Object.keys(CAMPOS).forEach(k => {
       const d = document.createElement('div');
       d.className = 'campo' + (k === 'pedido' ? ' principal' : '');
@@ -351,7 +349,6 @@
       camposEl.appendChild(d);
     });
 
-    // Atualiza botão de envio quando o usuário edita
     camposEl.addEventListener('input', () => {
       const pedidoVal = document.querySelector('input[data-campo="pedido"]').value.trim();
       btnEnviar.disabled = !pedidoVal;
@@ -488,7 +485,6 @@
         }
       });
 
-      // Habilita envio somente se houver Nº do Pedido
       const pedidoVal = document.querySelector('input[data-campo="pedido"]').value.trim();
       btnEnviar.disabled = !pedidoVal;
 
@@ -507,9 +503,10 @@
     function reiniciarTicket() {
       votos = {};
       quadrosVazios = 0;
-      travado = false;
+      travado = false;          // libera o loop imediatamente
+      ocupado = false;          // garante que o próximo quadro possa rodar
       moldura.classList.remove('lido', 'parcial');
-      estado.textContent = 'Aponte o ticket para a moldura';
+      estado.textContent = 'Aponte o próximo ticket';
       avisoEl.classList.remove('visivel');
       Object.keys(CAMPOS).forEach(k => {
         const el = document.getElementById('campo-' + k);
@@ -518,6 +515,7 @@
       });
       btnEnviar.disabled = true;
       atual = { res: {}, firmes: {}, texto: '' };
+      ultimoTextoBruto = '';
     }
 
     function tratar(texto) {
@@ -536,14 +534,13 @@
       ultimoTextoBruto = texto;
       document.getElementById('d-texto').textContent = texto.trim() || '(vazio)';
 
-      if (travado) return; // já está aguardando validação do usuário
+      if (travado) return;
 
       votar(achados);
       const { res, firmes } = consolidar();
       atualizarChips(res, firmes);
       atual = { res, firmes, texto };
 
-      // Quando o Nº do Pedido estiver firme, trava a leitura e pede validação
       if (firmes.pedido) {
         travado = true;
         bipe();
@@ -551,9 +548,8 @@
       }
     }
 
-    // ===== ENVIO MANUAL (só depois da validação do usuário) =====
+    // ===== ENVIO MANUAL =====
     btnEnviar.addEventListener('click', () => {
-      // Lê os valores atuais dos inputs (já editados pelo usuário)
       const campos = {};
       Object.keys(CAMPOS).forEach(k => {
         const val = document.querySelector('input[data-campo="' + k + '"]').value.trim();
@@ -565,7 +561,6 @@
         return;
       }
 
-      // Verifica duplicado nesta sessão
       const ids = Object.entries(campos)
         .filter(([c]) => CAMPOS[c] && CAMPOS[c].identificador)
         .map(([, v]) => v);
@@ -607,8 +602,9 @@
             item.textContent = '✔ ' + rotulo + ' (' + confianca + '%)';
             document.getElementById('contador').textContent = 'Lidos: ' + lidos;
           }
-          estado.textContent = '✅ Enviado! Remova o ticket ou clique em Limpar';
           bipe();
+          // Reinicia NA HORA para o próximo ticket
+          reiniciarTicket();
         })
         .catch(err => {
           item.textContent = '❌ ' + rotulo + ' (falha: ' + err.message + ')';
@@ -617,6 +613,7 @@
         });
     });
 
+    // Limpar → reinicia na hora
     document.getElementById('btn-limpar').addEventListener('click', () => {
       reiniciarTicket();
     });
